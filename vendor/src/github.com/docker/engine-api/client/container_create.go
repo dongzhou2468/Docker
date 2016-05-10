@@ -2,6 +2,7 @@ package client
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 
@@ -19,6 +20,8 @@ type configWrapper struct {
 // ContainerCreate creates a new container based in the given configuration.
 // It can be associated with a name, but it's not mandatory.
 func (cli *Client) ContainerCreate(config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (types.ContainerCreateResponse, error) {
+	fmt.Println("vender...client...ContainerCreate")
+
 	var response types.ContainerCreateResponse
 	query := url.Values{}
 	if containerName != "" {

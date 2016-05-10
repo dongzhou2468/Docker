@@ -223,6 +223,7 @@ func (ls *layerStore) applyTar(tx MetadataTransaction, ts io.Reader, parent stri
 	layer.diffID = DiffID(digester.Digest())
 
 	logrus.Debugf("Applied tar %s to %s, size: %d", layer.diffID, layer.cacheID, applySize)
+	fmt.Printf("Applied tar %s  %d\n", layer.diffID, applySize)
 
 	return nil
 }
@@ -263,10 +264,14 @@ func (ls *layerStore) Register(ts io.Reader, parent ChainID) (Layer, error) {
 		references:     map[Layer]struct{}{},
 	}
 
+	//daemon/graphdriver/<driver>/<driver>.go
+	//Create three folders for each id
 	if err = ls.driver.Create(layer.cacheID, pid, ""); err != nil {
 		return nil, err
 	}
 
+	//layer/filestore.go
+	//create temp dir layerdb/tmp/ and layerdb/tmp/layer-xxxxxx/
 	tx, err := ls.store.StartTransaction()
 	if err != nil {
 		return nil, err
@@ -284,6 +289,8 @@ func (ls *layerStore) Register(ts io.Reader, parent ChainID) (Layer, error) {
 		}
 	}()
 
+	//extraction of the archive
+	//set layer.diffID
 	if err = ls.applyTar(tx, ts, pid, layer); err != nil {
 		return nil, err
 	}
@@ -294,6 +301,8 @@ func (ls *layerStore) Register(ts io.Reader, parent ChainID) (Layer, error) {
 		layer.chainID = createChainIDFromParent(layer.parent.chainID, layer.diffID)
 	}
 
+	//ro_layer.go
+	//set diffid, size, cacheid, parent
 	if err = storeLayer(tx, layer); err != nil {
 		return nil, err
 	}
@@ -334,6 +343,7 @@ func (ls *layerStore) get(l ChainID) *roLayer {
 }
 
 func (ls *layerStore) Get(l ChainID) (Layer, error) {
+	fmt.Println(len(ls.layerMap))
 	layer := ls.get(l)
 	if layer == nil {
 		return nil, ErrLayerDoesNotExist
@@ -415,6 +425,7 @@ func (ls *layerStore) Release(l Layer) ([]Metadata, error) {
 }
 
 func (ls *layerStore) CreateRWLayer(name string, parent ChainID, mountLabel string, initFunc MountInit) (RWLayer, error) {
+
 	ls.mountL.Lock()
 	defer ls.mountL.Unlock()
 	m, ok := ls.mounts[name]
@@ -449,6 +460,7 @@ func (ls *layerStore) CreateRWLayer(name string, parent ChainID, mountLabel stri
 		layerStore: ls,
 		references: map[RWLayer]*referencedRWLayer{},
 	}
+	fmt.Println("CreateRWLayer...", m.name, ", ", m.mountID, ", ", pid)
 
 	if initFunc != nil {
 		pid, err = ls.initMount(m.mountID, pid, mountLabel, initFunc)
@@ -456,6 +468,7 @@ func (ls *layerStore) CreateRWLayer(name string, parent ChainID, mountLabel stri
 			return nil, err
 		}
 		m.initID = pid
+		fmt.Println("after initMount: ", pid)
 	}
 
 	if err = ls.driver.Create(m.mountID, pid, ""); err != nil {
@@ -560,6 +573,7 @@ func (ls *layerStore) initMount(graphID, parent, mountLabel string, initFunc Mou
 		return "", err
 	}
 	p, err := ls.driver.Get(initID, "")
+	fmt.Println(p)
 	if err != nil {
 		return "", err
 	}

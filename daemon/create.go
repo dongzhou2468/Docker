@@ -18,6 +18,8 @@ import (
 
 // ContainerCreate creates a container.
 func (daemon *Daemon) ContainerCreate(params types.ContainerCreateConfig) (types.ContainerCreateResponse, error) {
+	fmt.Println("daemon...ContainerCreate")
+
 	if params.Config == nil {
 		return types.ContainerCreateResponse{}, fmt.Errorf("Config cannot be empty in order to create a container")
 	}
@@ -156,6 +158,8 @@ func (daemon *Daemon) setRWLayer(container *container.Container) error {
 		}
 		layerID = img.RootFS.ChainID()
 	}
+	fmt.Println("setRWLayer...", layerID)
+	fmt.Println("MountLabel: ", container.MountLabel)
 	rwLayer, err := daemon.layerStore.CreateRWLayer(container.ID, layerID, container.MountLabel, daemon.setupInitLayer)
 	if err != nil {
 		return err

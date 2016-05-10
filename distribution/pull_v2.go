@@ -84,12 +84,17 @@ func (p *v2Puller) Pull(ctx context.Context, ref reference.Named) (err error) {
 func (p *v2Puller) pullV2Repository(ctx context.Context, ref reference.Named) (err error) {
 	var layersDownloaded bool
 	if !reference.IsNameOnly(ref) {
+		fmt.Println("not name only..")
 		layersDownloaded, err = p.pullV2Tag(ctx, ref)
 		if err != nil {
 			return err
 		}
 	} else {
 		tags, err := p.repo.Tags(ctx).All(ctx)
+		fmt.Printf("********%d\n", len(tags))
+		for _, tag := range tags {
+			fmt.Printf("%s\n", tag)
+		}
 		if err != nil {
 			// If this repository doesn't exist on V2, we should
 			// permit a fallback to V1.
@@ -278,6 +283,9 @@ func (ld *v2LayerDescriptor) Download(ctx context.Context, progressOutput progre
 		ld.verifier = nil
 		return nil, 0, xfer.DoNotRetry{Err: err}
 	}
+
+	fmt.Println(tmpFile.Name())
+	fmt.Println(size)
 	return tmpFile, size, nil
 }
 
@@ -326,11 +334,14 @@ func (p *v2Puller) pullV2Tag(ctx context.Context, ref reference.Named) (tagUpdat
 		// NOTE: not using TagService.Get, since it uses HEAD requests
 		// against the manifests endpoint, which are not supported by
 		// all registry versions.
+		//repository.go
 		manifest, err = manSvc.Get(ctx, "", client.WithTag(tagged.Tag()))
 		if err != nil {
 			return false, allowV1Fallback(err)
 		}
 		tagOrDigest = tagged.Tag()
+		//fmt.Println(manifest)
+		fmt.Println(tagOrDigest)
 	} else if digested, isDigested := ref.(reference.Canonical); isDigested {
 		manifest, err = manSvc.Get(ctx, digested.Digest())
 		if err != nil {
@@ -359,16 +370,21 @@ func (p *v2Puller) pullV2Tag(ctx context.Context, ref reference.Named) (tagUpdat
 
 	switch v := manifest.(type) {
 	case *schema1.SignedManifest:
+		fmt.Printf("%s...", "schema1")
 		imageID, manifestDigest, err = p.pullSchema1(ctx, ref, v)
 		if err != nil {
 			return false, err
 		}
 	case *schema2.DeserializedManifest:
+		fmt.Printf("%s...", "schema2")
+		//fmt.Println(v)
 		imageID, manifestDigest, err = p.pullSchema2(ctx, ref, v)
 		if err != nil {
 			return false, err
 		}
 	case *manifestlist.DeserializedManifestList:
+		fmt.Printf("%s...", "manifestlist")
+		//fmt.Println(v)
 		imageID, manifestDigest, err = p.pullManifestList(ctx, ref, v)
 		if err != nil {
 			return false, err
@@ -402,10 +418,12 @@ func (p *v2Puller) pullV2Tag(ctx context.Context, ref reference.Named) (tagUpdat
 func (p *v2Puller) pullSchema1(ctx context.Context, ref reference.Named, unverifiedManifest *schema1.SignedManifest) (imageID image.ID, manifestDigest digest.Digest, err error) {
 	var verifiedManifest *schema1.Manifest
 	verifiedManifest, err = verifySchema1Manifest(unverifiedManifest, ref)
+	fmt.Println(verifiedManifest)
 	if err != nil {
 		return "", "", err
 	}
 
+	//image/rootfs_unix.go
 	rootFS := image.NewRootFS()
 
 	if err := detectBaseLayer(p.config.ImageStore, verifiedManifest, rootFS); err != nil {
@@ -427,6 +445,7 @@ func (p *v2Puller) pullSchema1(ctx context.Context, ref reference.Named, unverif
 	// to top-most, so that the downloads slice gets ordered correctly.
 	for i := len(verifiedManifest.FSLayers) - 1; i >= 0; i-- {
 		blobSum := verifiedManifest.FSLayers[i].BlobSum
+		fmt.Println(blobSum)
 
 		var throwAway struct {
 			ThrowAway bool `json:"throwaway,omitempty"`
@@ -455,10 +474,16 @@ func (p *v2Puller) pullSchema1(ctx context.Context, ref reference.Named, unverif
 		descriptors = append(descriptors, layerDescriptor)
 	}
 
+	fmt.Println(rootFS)
+	//fmt.Println(descriptors)
+	//xfer/download.go
 	resultRootFS, release, err := p.config.DownloadManager.Download(ctx, *rootFS, descriptors, p.config.ProgressOutput)
 	if err != nil {
 		return "", "", err
 	}
+	fmt.Println(resultRootFS)
+	//fmt.Println(release)
+
 	defer release()
 
 	config, err := v1.MakeConfigFromV1Config([]byte(verifiedManifest.History[0].V1Compatibility), &resultRootFS, history)
@@ -825,5 +850,6 @@ func fixManifestLayers(m *schema1.Manifest) error {
 }
 
 func createDownloadFile() (*os.File, error) {
+	//default: /tmp/GetImagesBlobxxxxxx/
 	return ioutil.TempFile("", "GetImageBlob")
 }

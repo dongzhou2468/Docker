@@ -94,16 +94,28 @@ func (ldm *LayerDownloadManager) Download(ctx context.Context, initialRootFS ima
 
 	rootFS := initialRootFS
 	for _, descriptor := range layers {
+		//blobSum
 		key := descriptor.Key()
 		transferKey += key
+		fmt.Println(key)
+		fmt.Println(missingLayer)
 
 		if !missingLayer {
 			missingLayer = true
+			//"diff_ids"(imagedb)
+			//metadata/v2_metadata_service.go
 			diffID, err := descriptor.DiffID()
+			fmt.Println(diffID)
 			if err == nil {
 				getRootFS := rootFS
-				getRootFS.Append(diffID)
+				getRootFS.Append(diffID) //append to DiffIDs[]
+				fmt.Println(getRootFS.ChainID())
+				//fmt.Println(getRootFS.DiffIDs)
+				//image/rootfs_unix.go
+				//layer/layer_store.go interface "Store" implemented by "layerStore"
+				//ChainID is the top layer's ID(layerdb) / or bottom ID in RootFS
 				l, err := ldm.layerStore.Get(getRootFS.ChainID())
+				fmt.Println(l)
 				if err == nil {
 					// Layer already exists.
 					logrus.Debugf("Layer already exists: %s", descriptor.ID())
@@ -237,6 +249,9 @@ func (ldm *LayerDownloadManager) makeDownloadFunc(descriptor DownloadDescriptor,
 
 			for {
 				downloadReader, size, err = descriptor.Download(d.Transfer.Context(), progressOutput)
+				//fmt.Println(downloadReader.Name())
+				//fmt.Println(size)
+				//blobs/../<digest>/data
 				if err == nil {
 					break
 				}

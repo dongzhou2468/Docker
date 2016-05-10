@@ -56,6 +56,7 @@ func newFSStore(root string) (*fs, error) {
 
 func (s *fs) contentFile(id ID) string {
 	dgst := digest.Digest(id)
+	fmt.Println("fs.go/contentFile...", s.root, contentDirName, string(dgst.Algorithm()), dgst.Hex())
 	return filepath.Join(s.root, contentDirName, string(dgst.Algorithm()), dgst.Hex())
 }
 
@@ -69,6 +70,7 @@ func (s *fs) Walk(f IDWalkFunc) error {
 	// Only Canonical digest (sha256) is currently supported
 	s.RLock()
 	dir, err := ioutil.ReadDir(filepath.Join(s.root, contentDirName, string(digest.Canonical)))
+
 	s.RUnlock()
 	if err != nil {
 		return err
@@ -79,6 +81,7 @@ func (s *fs) Walk(f IDWalkFunc) error {
 			logrus.Debugf("Skipping invalid digest %s: %s", dgst, err)
 			continue
 		}
+		fmt.Println("fs.go/Walk...", ID(dgst))
 		if err := f(ID(dgst)); err != nil {
 			return err
 		}
@@ -95,6 +98,7 @@ func (s *fs) Get(id ID) ([]byte, error) {
 }
 
 func (s *fs) get(id ID) ([]byte, error) {
+	//fmt.Println(s.contentFile(id))
 	content, err := ioutil.ReadFile(s.contentFile(id))
 	if err != nil {
 		return nil, err
@@ -172,6 +176,7 @@ func (s *fs) GetMetadata(id ID, key string) ([]byte, error) {
 	if _, err := s.get(id); err != nil {
 		return nil, err
 	}
+	//fmt.Println(s.metadataDir(id))
 	return ioutil.ReadFile(filepath.Join(s.metadataDir(id), key))
 }
 

@@ -109,6 +109,7 @@ func (cli *Cli) noSuchCommand(command string) {
 //
 // Usage: docker help COMMAND or docker COMMAND --help
 func (cli *Cli) CmdHelp(args ...string) error {
+	fmt.Printf("\n%s\n\n", "Build Your Docker!");
 	if len(args) > 1 {
 		command, err := cli.command(args[:2]...)
 		switch err := err.(type) {

@@ -45,6 +45,7 @@ type store struct {
 
 // NewImageStore returns new store object for given layer store
 func NewImageStore(fs StoreBackend, ls LayerGetReleaser) (Store, error) {
+	fmt.Println("NewImageStore...")
 	is := &store{
 		ls:        ls,
 		images:    make(map[ID]*imageMeta),
@@ -82,7 +83,6 @@ func (is *store) restore() error {
 			layer:    l,
 			children: make(map[ID]struct{}),
 		}
-
 		is.images[ID(id)] = imageMeta
 
 		return nil
@@ -93,7 +93,9 @@ func (is *store) restore() error {
 
 	// Second pass to fill in children maps
 	for id := range is.images {
+		//fmt.Println(id)
 		if parent, err := is.GetParent(id); err == nil {
+			fmt.Println("GetParent err == nil", parent)
 			if parentMeta := is.images[parent]; parentMeta != nil {
 				parentMeta.children[id] = struct{}{}
 			}
@@ -182,6 +184,7 @@ func (is *store) Get(id ID) (*Image, error) {
 	if err != nil {
 		return nil, err
 	}
+	//fmt.Println(config)
 
 	img, err := NewFromJSON(config)
 	if err != nil {
@@ -190,6 +193,7 @@ func (is *store) Get(id ID) (*Image, error) {
 	img.computedID = id
 
 	img.Parent, err = is.GetParent(id)
+	fmt.Println(img.Parent, img.RootFS.DiffIDs, img.RootFS.ChainID())
 	if err != nil {
 		img.Parent = ""
 	}
@@ -277,6 +281,7 @@ func (is *store) imagesMap(all bool) map[ID]*Image {
 
 	images := make(map[ID]*Image)
 
+	fmt.Println(is.images)
 	for id := range is.images {
 		if !all && len(is.children(id)) > 0 {
 			continue

@@ -391,6 +391,7 @@ func (a *Driver) DiffGetter(id string) (graphdriver.FileGetCloser, error) {
 }
 
 func (a *Driver) applyDiff(id string, diff archive.Reader) error {
+	//pkg/chrootarchive/archive.go
 	return chrootarchive.UntarUncompressed(diff, path.Join(a.rootPath(), "diff", id), &archive.TarOptions{
 		UIDMaps: a.uidMaps,
 		GIDMaps: a.gidMaps,

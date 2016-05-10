@@ -605,6 +605,7 @@ func (bs *blobs) Open(ctx context.Context, dgst digest.Digest) (distribution.Rea
 		return nil, err
 	}
 	blobURL, err := bs.ub.BuildBlobURL(ref)
+	fmt.Println(blobURL)
 	if err != nil {
 		return nil, err
 	}

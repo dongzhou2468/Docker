@@ -41,7 +41,7 @@ func (daemon *Daemon) Images(filterArgs, filter string, all bool) ([]*types.Imag
 		err          error
 		danglingOnly = false
 	)
-
+	fmt.Println("images.go...Images", filter)
 	imageFilters, err := filters.FromParam(filterArgs)
 	if err != nil {
 		return nil, err
@@ -57,6 +57,8 @@ func (daemon *Daemon) Images(filterArgs, filter string, all bool) ([]*types.Imag
 			return nil, fmt.Errorf("Invalid filter 'dangling=%s'", imageFilters.Get("dangling"))
 		}
 	}
+	fmt.Println(danglingOnly)
+	//fmt.Println(daemon.imageStore.images) field images undefined
 	if danglingOnly {
 		allImages = daemon.imageStore.Heads()
 	} else {
@@ -74,7 +76,7 @@ func (daemon *Daemon) Images(filterArgs, filter string, all bool) ([]*types.Imag
 			}
 		}
 	}
-
+	fmt.Println(len(allImages))
 	for id, img := range allImages {
 		if imageFilters.Include("label") {
 			// Very old image that do not have image.Config (or even labels)
@@ -88,6 +90,7 @@ func (daemon *Daemon) Images(filterArgs, filter string, all bool) ([]*types.Imag
 		}
 
 		layerID := img.RootFS.ChainID()
+		fmt.Println(layerID)
 		var size int64
 		if layerID != "" {
 			l, err := daemon.layerStore.Get(layerID)
@@ -116,12 +119,17 @@ func (daemon *Daemon) Images(filterArgs, filter string, all bool) ([]*types.Imag
 			}
 			if _, ok := ref.(reference.Canonical); ok {
 				newImage.RepoDigests = append(newImage.RepoDigests, ref.String())
+				fmt.Println("ref.(reference.Canonical) ok")
 			}
 			if _, ok := ref.(reference.NamedTagged); ok {
 				newImage.RepoTags = append(newImage.RepoTags, ref.String())
+				fmt.Println("ref.(reference.NamedTagged) ok")
 			}
+			fmt.Println(ref.String(), id, size)
 		}
+		fmt.Println(newImage.RepoDigests, newImage.RepoTags)
 		if newImage.RepoDigests == nil && newImage.RepoTags == nil {
+			fmt.Println("RepoDigests and RepoTags == nil")
 			if all || len(daemon.imageStore.Children(id)) == 0 {
 
 				if imageFilters.Include("dangling") && !danglingOnly {
@@ -141,6 +149,7 @@ func (daemon *Daemon) Images(filterArgs, filter string, all bool) ([]*types.Imag
 		}
 
 		images = append(images, newImage)
+		fmt.Println(len(images))
 	}
 
 	sort.Sort(sort.Reverse(byCreated(images)))

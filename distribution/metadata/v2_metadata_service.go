@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"encoding/json"
+	//"fmt"
 
 	"github.com/docker/distribution/digest"
 	"github.com/docker/docker/layer"
@@ -62,11 +63,13 @@ func (serv *V2MetadataService) GetMetadata(diffID layer.DiffID) ([]V2Metadata, e
 
 // GetDiffID finds a layer DiffID from a digest.
 func (serv *V2MetadataService) GetDiffID(dgst digest.Digest) (layer.DiffID, error) {
+	//fmt.Println(serv.digestKey(dgst))
 	diffIDBytes, err := serv.store.Get(serv.digestNamespace(), serv.digestKey(dgst))
+	//fmt.Println(diffIDBytes)
 	if err != nil {
 		return layer.DiffID(""), err
 	}
-
+	//to call which function?
 	return layer.DiffID(diffIDBytes), nil
 }
 

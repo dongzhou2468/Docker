@@ -109,6 +109,7 @@ func (rl *roLayer) depth() int {
 }
 
 func storeLayer(tx MetadataTransaction, layer *roLayer) error {
+	//filestore.go
 	if err := tx.SetDiffID(layer.diffID); err != nil {
 		return err
 	}

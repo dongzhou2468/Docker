@@ -412,6 +412,7 @@ func (daemon *Daemon) mergeAndVerifyConfig(config *containertypes.Config, img *i
 			return err
 		}
 	}
+	fmt.Printf("mergeAndVerifyConfig...Entryp and cmd's lengths:%d,%d\n", len(config.Entrypoint), len(config.Cmd))
 	if len(config.Entrypoint) == 0 && len(config.Cmd) == 0 {
 		return fmt.Errorf("No command specified")
 	}
@@ -509,6 +510,7 @@ func (daemon *Daemon) newContainer(name string, config *containertypes.Config, i
 		noExplicitName = name == ""
 	)
 	id, name, err = daemon.generateIDAndName(name)
+	fmt.Println("newContainer...id and name:", id, name)
 	if err != nil {
 		return nil, err
 	}

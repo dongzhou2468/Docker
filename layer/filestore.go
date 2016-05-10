@@ -66,11 +66,13 @@ func (fms *fileMetadataStore) getMountFilename(mount, filename string) string {
 
 func (fms *fileMetadataStore) StartTransaction() (MetadataTransaction, error) {
 	tmpDir := filepath.Join(fms.root, "tmp")
+	//fmt.Println(tmpDir)
 	if err := os.MkdirAll(tmpDir, 0755); err != nil {
 		return nil, err
 	}
 
 	td, err := ioutil.TempDir(tmpDir, "layer-")
+	//fmt.Println(td)
 	if err != nil {
 		return nil, err
 	}
@@ -118,6 +120,7 @@ func (fm *fileMetadataTransaction) TarSplitWriter(compressInput bool) (io.WriteC
 
 func (fm *fileMetadataTransaction) Commit(layer ChainID) error {
 	finalDir := fm.store.getLayerDirectory(layer)
+	fmt.Println(finalDir)
 	if err := os.MkdirAll(filepath.Dir(finalDir), 0755); err != nil {
 		return err
 	}

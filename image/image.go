@@ -128,6 +128,7 @@ func NewFromJSON(src []byte) (*Image, error) {
 	if err := json.Unmarshal(src, img); err != nil {
 		return nil, err
 	}
+
 	if img.RootFS == nil {
 		return nil, errors.New("Invalid image JSON, no RootFS key.")
 	}

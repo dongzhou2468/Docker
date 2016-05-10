@@ -89,6 +89,10 @@ func Pull(ctx context.Context, ref reference.Named, imagePullConfig *ImagePullCo
 	}
 
 	endpoints, err := imagePullConfig.RegistryService.LookupPullEndpoints(repoInfo.Hostname())
+	fmt.Printf("********%d\n", len(endpoints))
+	for _, endpoint := range endpoints {
+		fmt.Printf("%s, %s\n", endpoint.URL, endpoint.Version)
+	}
 	if err != nil {
 		return err
 	}
@@ -116,6 +120,7 @@ func Pull(ctx context.Context, ref reference.Named, imagePullConfig *ImagePullCo
 		confirmedTLSRegistries = make(map[string]struct{})
 	)
 	for _, endpoint := range endpoints {
+		fmt.Printf("%s, %s\n", endpoint.URL, endpoint.Version)
 		if confirmedV2 && endpoint.Version == registry.APIVersion1 {
 			logrus.Debugf("Skipping v1 endpoint %s because v2 registry was detected", endpoint.URL)
 			continue
