@@ -1,7 +1,12 @@
 package daemon
 
 import (
+	"bufio"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/container"
@@ -57,10 +62,20 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 		img       *image.Image
 		imgID     image.ID
 		err       error
+		layersP   string
 	)
 
 	if params.Config.Image != "" {
-		img, err = daemon.GetImage(params.Config.Image)
+		fmt.Println("daemon/create.go...Config.Image...", params.Config.Image)
+		tmp := strings.Split(params.Config.Image, "_")
+		fmt.Println(tmp[1:])
+		layersP, err = compose(tmp[1:])
+		if err != nil {
+			fmt.Println("compose error")
+			return nil, err
+		}
+
+		img, err = daemon.GetImage(tmp[0])
 		if err != nil {
 			return nil, err
 		}
@@ -131,6 +146,12 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 		return nil, err
 	}
 	daemon.LogContainerEvent(container, "create")
+
+	if err := restore(layersP); err != nil {
+		fmt.Println("restore error")
+		return nil, err
+	}
+
 	return container, nil
 }
 
@@ -186,4 +207,120 @@ func (daemon *Daemon) VolumeCreate(name, driverName string, opts map[string]stri
 
 	daemon.LogVolumeEvent(v.Name(), "create", map[string]string{"driver": v.DriverName()})
 	return volumeToAPIType(v), nil
+}
+
+func compose(paras []string) (string, error) {
+
+	// function2layerdb => map
+	manifestP := path.Join("/var/lib/docker/image/aufs/imagedb", "manifest", paras[0])
+	fmt.Println(manifestP)
+	manifestF, err := os.Open(manifestP)
+	if err != nil {
+		fmt.Println("open manifest file error")
+		return "", err
+	}
+	defer manifestF.Close()
+
+	functionM := make(map[string]string)
+	s := bufio.NewScanner(manifestF)
+	for s.Scan() {
+		if t := s.Text(); t != "" {
+			m := strings.Split(t, ",")
+			functionM[m[0]] = m[1]
+		}
+	}
+	fmt.Println(functionM)
+
+	// paras to be composed => slice
+	composeS := make([]string, 0, 5)
+	paras = append(paras, "chainID") // chainID correspond to reserved top layer
+	for _, para := range paras {
+		layerdbP := path.Join("/var/lib/docker/image/aufs/layerdb/sha256", functionM[para], "cache-id")
+		layerF, err := os.Open(layerdbP)
+		if err != nil {
+			fmt.Println("open layerdb file error")
+			return "", err
+		}
+		defer layerF.Close()
+
+		fd, err := ioutil.ReadAll(layerF)
+		composeS = append(composeS, strings.Replace(string(fd), "\n", "", -1)) // remove "\n"
+	}
+	fmt.Println(composeS)
+
+	// backup and replace origin layers file
+	layersP := path.Join("/var/lib/docker/aufs/layers", composeS[len(composeS)-1])
+	ids, err := getParentIds(layersP)
+	if err != nil {
+		fmt.Println("get parent ids error", err)
+		return "", err
+	}
+	err = os.Rename(layersP, strings.Join([]string{layersP, "-backup"}, ""))
+	if err != nil {
+		fmt.Println("backup error", err)
+		return "", err
+	}
+	replaceF, err := os.Create(layersP)
+	if err != nil {
+		fmt.Println("replace error", err)
+		return "", err
+	}
+	defer replaceF.Close()
+
+	// write layers to be composed
+	length := len(composeS)
+	for i := 1; i < length; i++ {
+		if _, err := fmt.Fprintln(replaceF, composeS[length-1-i]); err != nil {
+			fmt.Println("replace error", err)
+			return "", err
+		}
+	}
+	// write parent layers
+	length = len(ids)
+	for i := 0; i < length; i++ {
+		if ids[i] != composeS[0] {
+			continue
+		} else {
+			for i = i + 1; i < length; i++ {
+				if _, err := fmt.Fprintln(replaceF, ids[i]); err != nil {
+					fmt.Println("replace error", err)
+					return "", err
+				}
+			}
+		}
+	}
+
+	return layersP, nil
+}
+
+// restore layers file
+func restore(layersP string) error {
+	if err := os.Remove(layersP); err != nil {
+		fmt.Println("restore error", err)
+		return err
+	}
+	err := os.Rename(strings.Join([]string{layersP, "-backup"}, ""), layersP)
+	if err != nil {
+		fmt.Println("restore error", err)
+		return err
+	}
+	return nil
+}
+
+func getParentIds(layersP string) ([]string, error) {
+	f, err := os.Open(layersP)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	out := []string{}
+	s := bufio.NewScanner(f)
+
+	for s.Scan() {
+		if t := s.Text(); t != "" {
+			out = append(out, s.Text())
+		}
+	}
+	return out, s.Err()
 }

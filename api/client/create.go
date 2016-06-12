@@ -152,6 +152,7 @@ func (cli *DockerCli) createContainer(config *container.Config, hostConfig *cont
 //
 // Usage: docker create [OPTIONS] IMAGE [COMMAND] [ARG...]
 func (cli *DockerCli) CmdCreate(args ...string) error {
+	fmt.Println("api/create.go...args:", args)
 	cmd := Cli.Subcmd("create", []string{"IMAGE [COMMAND] [ARG...]"}, Cli.DockerCommands["create"].Description, true)
 	addTrustedFlags(cmd, true)
 
